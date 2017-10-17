@@ -3,6 +3,8 @@ from tkinter import *
 import json
 import random
 import generator
+import math
+import time
 
 count = random.randint(3,5)
 tempMin = 23
@@ -16,6 +18,9 @@ radMax = 0.5
 windStrMin = 0
 windStrMax = 3
 #values = {'tempMin':23,'tempMax':27,'pressMin':742, 'pressMax':750,'wetMin':70,'wetMax':80,'radMin':0,'radMax':0.5,'windStrMin':0, 'windStrMax':3}
+
+#генерить и отправлять в функции sendproc с интервалом в 10 секунд
+#в начале функции, чтобы потом записать в файл
 weird_json = generator.Generate(count,tempMin,tempMax,pressMin,pressMax,wetMin,wetMax,radMin,radMax,windStrMin,windStrMax)
 print(weird_json)
 send = json.dumps(weird_json)
@@ -56,8 +61,17 @@ log.pack(side='top', fill='both',expand='true')
     #print (sys.stderr, 'waiting for a connection')
     #connection, client_address = s.accept()
 
+tick = 0
+propability =round(random.uniform(0.1,0.5),1)
+denied =0
 
 def loopproc():
+    delay = 10000
+    global s
+    global tick
+    if failure(delay)==True:
+        s= reset_connect(s)
+        print(s)
     log.see(END)
     s.setblocking(False)
     c = None
@@ -66,8 +80,10 @@ def loopproc():
         message = c.recv(128)
         log.insert(END, message.decode("utf-8") + '\n')
     except:
+        tick+=1
         tk.after(1, loopproc)
         return
+    tick += 1
     tk.after(1, loopproc)
     return
 
@@ -98,6 +114,30 @@ def sendproc(event):
         f.write(send + '\n')
         f.close()   
 
+def reset_connect(self):
+    self.close()
+    print(self)
+    time.sleep(5)
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    return s
+
+
+
+def failure(delay):
+    global tick
+    global propability
+    global denied
+    if tick>=delay:
+        tick=0
+        denied += math.exp(propability)
+        if denied >=2.6:
+            propability = round(random.uniform(0.1,0.5),1)
+            denied =0
+            return True
+        else:
+            propability+=0.05
+            return False
+    return False
 
 msg.bind('<Return>',sendproc)
 
